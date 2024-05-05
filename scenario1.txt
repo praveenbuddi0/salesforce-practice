@@ -1,0 +1,48 @@
+Whenever an opportunity owner is changed previous person should still have access to record 
+
+
+OWD - Private 
+Apex Managed Sharing 
+
+OpportunityShare 
+Manual 
+RecordId UserOrGroupId RowCause AccessLevel 
+
+
+trigger OpportunityTrigger on Opportunity(after update){
+    switch on trigger.operationType{
+	    when AFTER_UPDATE {
+		    OpportunityTriggerHandler.handleAfterUpdate(trigger.newmap,trigger.oldmap);   
+		}
+	}
+} 
+
+
+interface ITrigger{
+    public static void handleAfterUpdate(Map<Id,Sobject> newmap,Map<Id,Sobject> oldmap);
+}
+
+public class OpportunityTriggerHandler implements  ITrigger{
+    public static void handleAfterUpdate(Map<Id,Opportunity> newmap,Map<Id,Opportunity> oldmap){
+	    for(Id oppId : oldmap.keySet()){
+		    if(newmap.get(oppId).OwnerId != oldmap.get(oppId).OwnerId){
+		       	OpportunityService.addAccessOfPreviousOwner(newmap,oldmap);     
+		    }
+		}
+	}
+}
+
+public class OpportunityService{
+    public static void addAccessOfPreviousOwner(Map<Id,Opportunity> newmap,Map<Id,Opportunity> oldmap){
+	    List<OpportunityShare> listOfOppShare = new List<OpportunityShare>(); 
+		for(Id oppId : oldmap.keySet()){
+	    	listOfOppShare.add(new OpportunityShare(RecordId = oppId,
+					UserOrGroupId = oldmap.get(oppId).OwnerId,RowCause = 'Manual',AccessLevel = 'Read'); 		
+        }
+		if(!listOfOppShare.isEmpty()){
+		   insert listOfOppShare;
+		}
+	}
+
+}
+
